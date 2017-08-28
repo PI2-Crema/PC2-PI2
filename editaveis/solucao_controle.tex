@@ -1,0 +1,73 @@
+\section{Solução de Controle}
+
+Esse sub-sistema é responsável por armazenar e disponibilizar de forma estruturada, para as pontos de acesso em que o usuários iram interagir, os dados, as configurações e status do sistema. Uma vez que esses pontos de acesso podem estar em diferentes dispositivos e que a base se comunicará via protocolo HTTP, é necessário que as regras de negócios e os dados armazenados estejam em um único serviço, ou seja, um a API REST. Possibilitando a distribuição de forma eficiente das informações nos diferentes dispositivos e criando um interface de comunicação bem definida para registro das informações pela base. A seguir serão descritos o stack de tecnologia adotado e arquitetura da API.
+
+\subsection{Stack de tecnologia}
+
+Nessa sessão serão elicitados o \textit{stack} de técnologia adotado para a solução e a motivação que levaram a tal escolha.
+
+\subsubsection{REST API}
+
+Para o desenvolvimento da API REST foi selecionado o framework Django. Que segundo a organização responsável pela ferramenta[site], é um framework web de alto nível desenvolvido em python que já possui soluções out of the box de processos básicos de projetos web como gerenciamento de usuários, gerenciamento de sessões de usuários, serialização de APIs.
+
+Outro motivo para a seleção do framework Django é a linguagem na qual está escrito. O python também é a linguagem que será utilizada pelo módulo base responsável por fazer o elo entre o alimentador e a API. Dessa forma a maior parte da base de código estará na mesma linguagem de programação. Facilitando a compreensão e distribuição do conhecimento entre os responsáveis pelo desenvolvimento.
+
+\subsubsection{Frontend}
+
+Para o desenvolvimento da aplicação web foi selecionado o framework de single page applications (SPA) Emberjs. O motivos das escolha são listados a seguir:
+
+\begin{itemize}
+  \item O framework se baseia na ideia de web components permitindo assim  o reaproveitamento de código frontend;
+  \item O framework é feito em cima do paradigma de conversão sobre configuração;
+  \item A maioria da equipe de desenvolvimento possui experiência com desenvolvimento para o framework
+\end{itemize}
+
+\subsubsection{Mobile}
+
+Para o desenvolvimento da aplicação mobile foi selecionado o framework de desenvolvimento de aplicativos híbridos IONIC. A principal motivação é a natureza multiplataforma, ou seja, uma única base de código para os principais sistemas operacionais móveis do mercado. Outro motivo é estabilidade no framework se comparado à outros frameworks de desenvolvimento híbrido como React Native que ainda está em fase de beta.
+
+\subsection{MER}
+
+\begin{figure}[H]
+ \centering
+   \includegraphics[keepaspectratio=true,scale=0.8]{figuras/mer.eps}
+ \caption{Modelo de banco de dados}
+ \label{mer}
+\end{figure}
+
+O projeto Crema é um protótipo que visa a escalabilidade. Dessa forma é necessário desenvolver um sistema gerenciador escalável, ou seja, não se baseia unicamente na ideia de que haverá apenas um alimentador e que os tipos de dados e métricas coletados sejam não venham a aumentar. Sendo a assim o usuário tem a capacidade de registrar diferentes criações de peixes e em um único sistema gerenciador poder analisar e configurar conforme desejar.
+
+Dentro de cada criação há a possibilidade de diversas máquina alimentadoras e em cada uma delas um set diferente de métricas e ou sensores diferentes.
+
+\subsection{Interface}
+
+A interface de usuário é onde ocorre a interação entre usuários e o sistema de controle, podendo então configurar e verificar os status dos alimentadores. Além de visualizar dados históricos para um análise das métricas coletadas.
+
+Para essa primeira entrega foi construído um protótipo de médica fidelidade com as ferramentas Sketch e Marvelapp. As figuras abaixo mostram os primeiros protótipos e o proptótipo interativo está presente na URL https://marvelapp.com/28ec5d2/screen/31823025.
+
+\begin{sidewaysfigure}
+\begin{figure}[H]
+ \centering
+   \includegraphics[keepaspectratio=true,scale=0.2]{figuras/Login.eps}
+ \caption{Acesso de usuário}
+ \label{login}
+\end{figure}
+\end{sidewaysfigure}
+
+\begin{sidewaysfigure}
+\begin{figure}[H]
+ \centering
+   \includegraphics[keepaspectratio=true,scale=0.2]{figuras/Home.eps}
+ \caption{Listagem de alimentadores}
+ \label{home1}
+\end{figure}
+\end{sidewaysfigure}
+
+\begin{sidewaysfigure}
+\begin{figure}[H]
+ \centering
+   \includegraphics[keepaspectratio=true,scale=0.2]{figuras/Home5.eps}
+ \caption{Detalhe de alimentador}
+ \label{home2}
+\end{figure}
+\end{sidewaysfigure}
