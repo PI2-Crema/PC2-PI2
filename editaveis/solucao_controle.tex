@@ -1,73 +1,188 @@
-\section{Solução de Controle}
+\section{Solução de Software}
+O grupo de software ficou responsável pelo desenvolvimento da interação do usuário com o sistema, ou seja, em criar um ambiente onde o usuário possa configurar e analisar os dados capitados pelo sistema.
 
-Esse sub-sistema é responsável por armazenar e disponibilizar de forma estruturada, para as pontos de acesso em que o usuários iram interagir, os dados, as configurações e status do sistema. Uma vez que esses pontos de acesso podem estar em diferentes dispositivos e que a base se comunicará via protocolo HTTP, é necessário que as regras de negócios e os dados armazenados estejam em um único serviço, ou seja, um a API REST. Possibilitando a distribuição de forma eficiente das informações nos diferentes dispositivos e criando um interface de comunicação bem definida para registro das informações pela base. A seguir serão descritos o stack de tecnologia adotado e arquitetura da API.
+\section{Solução}
+O principal objetivo da solução de software é disponibilizar um ambiente onde o piscicultor possa analisar o rendimento e andamento do trato de peixe que está sendo cultivado.
 
-\subsection{Stack de tecnologia}
+Com esse objetivo em mente, foi necessário desenvolver também um sistema gerenciador de estoque. Dessa forma é possivel registrar o investimento feito em cada trato de peixe. Possibilitando assim uma análise de qual ração tem o melhor custo benefício no cultivo de peixe.
 
-Nessa sessão serão elicitados o \textit{stack} de técnologia adotado para a solução e a motivação que levaram a tal escolha.
+Outro fator que foi levado em consideração são os paramentros que são analisados em uma piscicultura, isto é, os valores de PH, temperatura, condutividade, turbidez, taxa de oxigenação e a taxa de conversão alimentar(TCA) em relação ao desenvolvimento e custo do trato de peixe.
 
-\subsubsection{REST API}
+\section{Arquitetura Geral}
 
-Para o desenvolvimento da API REST foi selecionado o framework Django. Que segundo a organização responsável pela ferramenta[site], é um framework web de alto nível desenvolvido em python que já possui soluções out of the box de processos básicos de projetos web como gerenciamento de usuários, gerenciamento de sessões de usuários, serialização de APIs.
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.5]{figuras/arquitetura_geral}
+    \caption{Arquitetura Geral}
+    \label{fig:arquitetura_geral}
+\end{figure}
 
-Outro motivo para a seleção do framework Django é a linguagem na qual está escrito. O python também é a linguagem que será utilizada pelo módulo base responsável por fazer o elo entre o alimentador e a API. Dessa forma a maior parte da base de código estará na mesma linguagem de programação. Facilitando a compreensão e distribuição do conhecimento entre os responsáveis pelo desenvolvimento.
+A arquitetura do sistema foi dividida em três pacotes que pode ser visualizados na figura \ref{fig:arquitetura_geral}. Um módulo que se encontra na placa raspberry, um módulo de gerenciamento de dados(API) e o módulo de interface gráfica com o usuário.
 
-\subsubsection{Frontend}
+\subsection{Módulo Raspberry}
 
-Para o desenvolvimento da aplicação web foi selecionado o framework de single page applications (SPA) Emberjs. O motivos das escolha são listados a seguir:
+O módulo que se encontra na raspberry foi desenvolvido em python e a sua função é sincronizar os dados recebidos pela rede \textit{wireless} e a API.
+
+O mecanismo utilizado para a transmisão de dados da rede rede \textit{wireless} e o módulo foi a escrita/leitura de arquivos.
+
+\subsubsection{Módulo de \textit{output}}
+Um arquivo de entrada e outro de saida foram definidos, assim como o formato de escrita em cada um deles. O processo de saida de dados da rede \textit{wireless} para a api funciona da seguinte maneira: o móludo de sincronização observa o arquivo de saida de dados do módulo \textit{wireless} e quando há mudanças realiza os seguintes procedimentos:
 
 \begin{itemize}
-  \item O framework se baseia na ideia de web components permitindo assim  o reaproveitamento de código frontend;
-  \item O framework é feito em cima do paradigma de conversão sobre configuração;
-  \item A maioria da equipe de desenvolvimento possui experiência com desenvolvimento para o framework
+  \item Cria uma cópia do arquivo de saída exluindo o original. Eviando assim uma condição de corrida entre o módulo e a rede \textit{wireless}.
+  \item Ler o arquivo cópia, realizando o \textit{parse} para o formato JSON esperado pela API
+  \item Ao fim do \textit{parse} realiza o \textit{request} para a API no \textit{endpoint} de registro de dados
+  \item Caso o \textit{request} falhe, o arquivo de cópia é mantido para ser utilizado na próxima tentativa de registro. Caso funcione, o arquivo é apagado
 \end{itemize}
 
-\subsubsection{Mobile}
+\subsubsection{Padrão de escrita}
 
-Para o desenvolvimento da aplicação mobile foi selecionado o framework de desenvolvimento de aplicativos híbridos IONIC. A principal motivação é a natureza multiplataforma, ou seja, uma única base de código para os principais sistemas operacionais móveis do mercado. Outro motivo é estabilidade no framework se comparado à outros frameworks de desenvolvimento híbrido como React Native que ainda está em fase de beta.
+Cada linha do arquivo representa um bloco de dados para cada alimentador na rede e cada dado tem a sua posição na linha separados por espaço. O formato do arquivo é apresentado a seguir:\\
 
-\subsection{MER}
+ID HORA MINUTO NIVEL-COMIDA NIVEL-BATERIA ERROR-CODE PH CONDUTIVIDADE TEMPERATURA TURBIDEZ OXIGENIO
+
+\subsubsection{Exemplo de arquivo}
+
+1 13 36 53 13 8 14 31 100 80 70\\
+3 5 10 67 26 6 11 1 30 45 23\\
+3 2 1 74 60 10 8 -13 21 37 96\\
+1 5 35 19 17 1 6 36 29 55 12\\
+1 7 20 37 73 4 10 -11 71 67 81\\
+3 12 12 44 6 7 7 15 62 42 16\\
+
+\subsubsection{Módulo de \textit{input}}
+
+O módulo de envio de dados para os alimentadores através da rede sem fio é feito através da escrita em um arquivo de entrada de dados. Para isso era necessário o desenvolvimento de um mini \textit{http server} capaz de receber um requisição e escrevel-lá no arquivo observado pelo módulo da rede \textit{wireless}.
+
+Sendo assim, foi desenvolvido um mini servidor em python capaz de receber \textit{requests} via \textit{POST} e escrever no arquivo de \textit{input} no formato esperado pelo módulo da rede. O formato do arquivo é apresentado a seguir.
+
+ID \textit{Lista de} (HORA MINUTO QUANTIDADE)
+
+Nesse novo modelo de dados, é enviado uma lista de informações contendo hora, minuto e quantidade de ração a ser depositada. Essa mudança ocorreu devido à necessidade do cliente de poder definir horários e quantidades independentes entre si, isto é, sem um espaçamento padrão entre eles.
+
+O código do módulo pode ser encontrado \href{https://github.com/PI2-Crema/parse-base-module}{aqui}.
+
+\section{API}
+
+A API é responsável por toda a gerência dos dados do sistema. Tanto dos dados adiquiridos pelos alimentadores, o \textit{status} de cada alimentador como o controle de estoque e tratos de peixes, ou seja, é responsavel por gerir os dados de compra de matéria, lotes de material, os tipos de trato de peixes, os tratos já cultivados, os dados coletados pelos sensores, o \textit{status} de cada alimentador no que diz respeit ao nível de ração e bateria, os tanques de peixe, os registro de desenvolvimento de cada trato.
+
+Para a organização desses dados, a api for desenvolvida baseando-se no seguindo o modelo entidade relacional:
 
 \begin{figure}[H]
- \centering
-   \includegraphics[keepaspectratio=true,scale=0.8]{figuras/mer.eps}
- \caption{Modelo de banco de dados}
- \label{mer}
+    \centering
+    \includegraphics[scale=0.5]{figuras/mer}
+    \caption{MER}
+    \label{fig:mer}
 \end{figure}
 
-O projeto Crema é um protótipo que visa a escalabilidade. Dessa forma é necessário desenvolver um sistema gerenciador escalável, ou seja, não se baseia unicamente na ideia de que haverá apenas um alimentador e que os tipos de dados e métricas coletados sejam não venham a aumentar. Sendo a assim o usuário tem a capacidade de registrar diferentes criações de peixes e em um único sistema gerenciador poder analisar e configurar conforme desejar.
+Em geral a API fornece uma interface de gerenciamento de entidades, isto é, operações de CRUD.
 
-Dentro de cada criação há a possibilidade de diversas máquina alimentadoras e em cada uma delas um set diferente de métricas e ou sensores diferentes.
+\subsubsection{Sincronização de Dados}
 
-\subsection{Interface}
+Ao receber dados do módulo de sincronização, é necessário verificar se esses dados são de alimentadores já existentes no sistema ou não. Designando assim os dados para o alimentador certo, caso já exista ou crie um novo caso seja necessário.
 
-A interface de usuário é onde ocorre a interação entre usuários e o sistema de controle, podendo então configurar e verificar os status dos alimentadores. Além de visualizar dados históricos para um análise das métricas coletadas.
+Para essa tipo de comportamento foi estabelecido dois estados para os alimentadores. São eles: 1 - Necessita de Configuração e 2 - Configurado. O estado 1 significa que este alimentador é novo na rede e necessita de configuração adequada enquanto o estado 2 siginifica que este alimentador já existe no sistema.
 
-Para essa primeira entrega foi construído um protótipo de médica fidelidade com as ferramentas Sketch e Marvelapp. As figuras abaixo mostram os primeiros protótipos e o proptótipo interativo está presente na URL https://marvelapp.com/28ec5d2/screen/31823025.
+A API valida o estado de cada dado vindo da rende verificando se os sensores/alimentadores sendo registrados já existem em sua base de dados através de um id de rede.
 
-\begin{sidewaysfigure}
+\subsubsection{Dados gráficos}
+
+Outro tipo de dado fornecido pela API são dados históricos de sensores. Fornecendo em formatação adequada desses dados e com a posibilidade de filtra o periodo desejado.
+
+\subsection{API - Rails}
+
+A escolha do framework Ruby on Rails se deve ao grande conhecimento da maioria da parte da equipe de desenvolvimento. O código da API pode se encontrado \href{https://github.com/PI2-Crema/API-rails}{aqui}.
+
+\section{Frontend}
+
+Conforme especificado no relatório de projeto 1. O frontend foi feito através do framework Emberjs que fornece uma solução robusta apara aplicação \textit{single page}.
+
+O sistema possui 3 macro funcionalidades
+
+\begin{itemize}
+  \item Visualização/Detalhe dos Alimentadores
+  \item Visualização/Detalhe dos Tanques
+  \item Visualização/Detalhe dos Recursos
+\end{itemize}
+
+\subsection{Visualização/Detalhe dos Alimentadores}
+
+Essa primeira macro funcionalidade se refere a visualização da lista de alimentadores
+que o sistema possui e ao detalhe do alimentador. Primeiramente, na lista é apresentado quais alimentadores estão cadastrados
+no sistema, subdivididos em duas categorias. A primeira para os alimentadores já configurados com suas informações pertinentes
+e a segunda para os alimentadores novos no sistema que aguardam algum tipo de configuração por parte do usuário, como: nome, criação atual de peixes presentes no tanque,
+tanque ao qual pertence. Para os alimentadores já configurados, é possível visualizar as informações de nível de ração, tanque ao qual pertence, tipo do peixe presente e o número total de peixes.
+
 \begin{figure}[H]
- \centering
-   \includegraphics[keepaspectratio=true,scale=0.2]{figuras/Login.eps}
- \caption{Acesso de usuário}
- \label{login}
+    \centering
+    \includegraphics[scale=0.3]{figuras/alimentadores_ember}
+    \caption{Página de Alimentadores}
+    \label{fig:alimentadores_ember}
 \end{figure}
-\end{sidewaysfigure}
 
-\begin{sidewaysfigure}
-\begin{figure}[H]
- \centering
-   \includegraphics[keepaspectratio=true,scale=0.2]{figuras/Home.eps}
- \caption{Listagem de alimentadores}
- \label{home1}
-\end{figure}
-\end{sidewaysfigure}
+Já na página de detalhe do Alimentador, é possível visualizar inúmeras informações referentes ao alimentador. São elas:
+quantidade de dias corrente da criação atual, quantidade atual de peixes, histórico de movimentação da quantidade de peixes no tanque (mortos, transferidos ou retirados),
+número da TCA atual e média, informações acerca dos sensores, histórico de consumo do alimentador e informações referente ao tanque em que o alimentador se encontra.
 
-\begin{sidewaysfigure}
 \begin{figure}[H]
- \centering
-   \includegraphics[keepaspectratio=true,scale=0.2]{figuras/Home5.eps}
- \caption{Detalhe de alimentador}
- \label{home2}
+    \centering
+    \includegraphics[scale=0.3]{figuras/alimentador_ember}
+    \caption{Página de detalhe do Alimentador}
+    \label{fig:alimentador_ember}
 \end{figure}
-\end{sidewaysfigure}
+
+No que se refere as informações dos sensores, é possível visualizar um gráfico do valor medido pelo sensor por tempo, sendo possível filtrar os dados através de
+todos, último dia, última semana e último mês. Já na parte de histórico de consumo do alimentador, é possível ver as informações específicas
+de: data, quantidade, tipo de ração, lote a qual a ração pertence e valor da dose em reais.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.3]{figuras/sensores_ember}
+    \caption{Página com gráfico de valores do sensor}
+    \label{fig:sensores_ember}
+\end{figure}
+
+Essa página ainda possui duas funções relevantes: Registar recarga e configurar alimentação. A primeira função é aonde
+o usuário registra uma recarga de ração no alimentador, onde seleciona de qual lote a ração pertence e a quantidade que foi colocada no alimentador.
+Já na função de configurar alimentação, é apresentada uma página onde o usuário seleciona quais horários e quantidades deseja que o alimentador alimente a criação de peixes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.3]{figuras/registro_recarga_ember}
+    \caption{Página de Registro de recarga do Alimentador}
+    \label{fig:registro_recarga_ember}
+\end{figure}
+
+\subsection{Visualização/Detalhe dos Alimentadores}
+
+Essa macro funcionalidade se refere a visualização da lista e detalhes dos tanques cadastrados no sistema.
+Onde é apresentado informações acerca da criação atual de peixes presentes no tanque, como: tipo do peixe,
+quantidade inicial, quantidade atual, quantidade de peixes retirados do tanque, quantidade de peixes colocados do tanque,
+quantidade de peixes mortos, taxa de mortalidade (em porcentagem), TCA Atual e média e período corrente da criação.
+
+Outras 3 funções podem ser realizadas nessa página: Registrar métrica, Registrar movimentação e finalizar criação. Na primeira
+é feito o registro do tamanho e peso do peixe para cálculo posterior da TCA, já em registrar movimentação é feito o cadastro das
+informações referentes a quantidade dos peixes, como: número de peixes mortor, retirados do tanque ou colocados. Por fim, na função
+de finalizar a criação, os dados são mantidos no sistema para fins de histórico do tanque.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.3]{figuras/criacao_ember}
+    \caption{Página de detalhe dos Tanques}
+    \label{fig:criacao_ember}
+\end{figure}
+
+\subsection{Visualização/Detalhe dos Recursos}
+
+Essa última macro funcionalidade se refere ao controle de estoque de alguns dados pertinentes ao sistema. Onde é possível
+cadastrar, visualizar e editar dados acerca: dos tipos de ração de peixe, da compra de lotes de ração e dos tipos de peixes criados na fazenda.
+
+O código do frontend pode ser encontrado \href{https://github.com/PI2-Crema/front-ember}{aqui}.
+
+\section{Emulação}
+
+Para a emulação de dados, foi desenvolvido no módulo raspbery um função geradora de dados. Assim é possivel emular a escrida de dados pela rede \textit{wireless} na placa e observar o comportamento do sistema.
+
+\section{Teste de integração com hardware}
+
+Foi realizado diversos testes de interação com o hardware e a rede \textit{wireless} e o comportamento foi conforme o esperado.
