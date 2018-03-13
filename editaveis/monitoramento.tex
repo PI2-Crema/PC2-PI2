@@ -1,0 +1,121 @@
+\section{Solução de Software}
+O grupo de software ficou responsável pelo desenvolvimento da interação do usuário com o sistema, ou seja, em criar um ambiente onde o usuário possa configurar e analisar os dados capitados pelo sistema.
+
+\section{Solução}
+O principal objetivo da solução de software é disponibilizar um ambiente onde o piscicultor possa analisar o rendimento e andamento do trato de peixe que está sendo cultivado.
+
+Com esse objetivo em mente, foi necessário desenvolver também um sistema gerenciador de estoque. Dessa forma é possivel registrar o investimento feito em cada trato de peixe. Possibilitando assim uma análise de qual ração tem o melhor custo benefício no cultivo de peixe.
+
+Outro fator que foi levado em consideração são os paramentros que são analisados em uma piscicultura, isto é, os valores de PH, temperatura, conductividade e a taxa de conversão alimentar(TCA) em relação ao desenvolvimento e custo do trato de peixe.
+
+\section{Arquitetura Geral}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.7, angle=90]{arquitetura_geral}
+    \caption{Arquitetura Geral}
+    \label{fig:arquitetura_geral}
+\end{figure}
+
+A arquitetura do sistema foi dividida em três pacotes que pode ser visualizados na figura \ref{fig:arquitetura_geral}. Um módulo que se encontra na placa raspberry, um módulo de gerenciamento de dados(API) e o módulo de interface gráfica com o usuário.
+
+\subsection{Módulo Raspberry}
+
+O módulo que se encontra na raspberry foi desenvolvido em python e a sua função é sincronizar os dados recebidos pela rede \textit{wireless} e a API.
+
+O mecanismo utilizado para a transmisão de dados da rede rede \textit{wireless} e o módulo foi a escrita/leitura de arquivos.
+
+\subsubsection{Módulo de \textit{output}}
+Um arquivo de entrada e outro de saida foram definidos, assim como o formato de escrita em cada um deles. O processo de saida de dados da rede \textit{wireless} para a api funciona da seguinte maneira: o móludo de sincronização observa o arquivo de saida de dados do módulo \text{wireless} e quando há mudanças realiza os seguintes procedimentos:
+
+\begin{itemize}
+  \item Cria uma cópia do arquivo de saída exluindo o original. Eviando assim uma condição de corrida entre o módulo e a rede \textit{wireless}.
+  \item Ler o arquivo cópia, realizando o \textit{parse} para o formato JSON esperado pela API
+  \item Ao fim do \textit{parse} realiza o \textit{request} para a API no \textit{endpoint} de registro de dados
+  \item Caso o \textit{request} falhe, o arquivo de cópia é mantido para ser utilizado na próxima tentativa de registro. Caso funcione, o arquivo é apagado
+\end{itemize}
+
+\subsubsection{Padrão de escrita}
+
+Cada linha do arquivo representa um bloco de dados para cada alimentador na rede e cada dado tem a sua posição na linha separados por espaço. O formato atual do arquivo é apresentado a seguir:\\
+
+ID HORA MINUTO NIVEL-COMIDA NIVEL-BATERIA ERROR-CODE PH TEMPERATURA CONDUTIVIDADE
+
+\subsubsection{Exemplo de arquivo}
+
+1 13 36 53 13 8 14 31 100\\
+3 5 10 67 26 6 11 1 30\\
+3 2 1 74 60 10 8 -13 21\\
+1 5 35 19 17 1 6 36 29\\
+1 7 20 37 73 4 10 -11 71\\
+3 12 12 44 6 7 7 15 62\\
+
+\subsubsection{Módulo de \textit{input}}
+
+O módulo de envio de dados para os alimentadores através da rede sem fio é feito através da escrita em um arquivo de entrada de dados. Para isso era necessário o desenvolvimento de um mini \textit{http server} capaz de receber um requisição e escrevel-lá no arquivo observado pelo módulo da rede \textit{wireless}.
+
+Sendo assim, foi desenvolvido um mini servidor em python capaz de receber \textit{requests} via \textit{POST} e escrever no arquivo de \textit{input} no formato esperado pelo módulo da rede. O formato do arquivo é apresentado a seguir.
+
+ID HORA MINUTO FREQUENCIA QUANTIDADE
+
+O código do módulo pode ser encontrado \href{https://github.com/PI2-Crema/parse-base-module}{aqui}.
+
+\section{API}
+
+A API é responsável por toda a gerência dos dados do sistema. Tanto dos dados adiquiridos pelos alimentadores, o \textit{status} de cada alimentador como o controle de estoque e tratos de peixes, ou seja, é responsavel por gerir os dados de compra de matéria, lotes de material, os tipos de trato de peixes, os tratos já cultivados, os dados coletados pelos sensores, o \textit{status} de cada alimentador no que diz respeit ao nível de ração e bateria, os tanques de peixe, os registro de desenvolvimento de cada trato.
+
+Para a organização desses dados, a api for desenvolvida baseando-se no seguindo o modelo entidade relacional:
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[scale=0.7, angle=90]{mer}
+    \caption{MER}
+    \label{fig:mer}
+\end{figure}
+
+Em geral a API fornece uma interface de gerenciamento de entidades, isto é, operações de CRUD.
+
+\subsubsection{Sincronização de Dados}
+
+Ao receber dados do módulo de sincronização, é necessário verificar se esses dados são de alimentadores já existentes no sistema ou não. Designando assim os dados para o alimentador certo, caso já exista ou crie um novo caso seja necessário.
+
+Para essa tipo de comportamento foi estabelecido dois estados para os alimentadores. São eles: 1 - Necessita de Configuração e 2 - Configurado. O estado 1 significa que este alimentador é novo na rede e necessita de configuração adequada enquanto o estado 2 siginifica que este alimentador já existe no sistema.
+
+A API valida o estado de cada dado vindo da rende verificando se os sensores/alimentadores sendo registrados já existem em sua base de dados através de um id de rede.
+
+\subsubsection{Dados gráficos}
+
+Outro tipo de dado fornecido pela API são dados históricos de sensores. Fornecendo em formatação adequada desses dados e com a posibilidade de filtra o periodo desejado.
+
+\subsection{API - Django}
+
+Conforme estabelecido no relatório de projeto 1, a API iria ser escrita em python com a utilização do framework DJANGO. Contudo essa escolha não se concretizou devido ao pouco conhecimento da ferramenta por maioria do time de desenvolvimento. Contudo um código foi desenvolvido para teste e validação em django e pode ser encontrado \href{https://github.com/PI2-Crema/API-django}{aqui}.
+
+\subsection{API - Rails}
+
+Com a queda da escolha da tecnologia seleciona para o desenvolvimento da API, foi selecionado o framework Ruby on Rails. A escolha se deve ao grande conhecimento da maioria da parte da equipe de desenvolvimento. O código da API pode se encontrado \href{https://github.com/PI2-Crema/API-rails}{aqui}.
+
+\section{Frontend}
+
+Conforme especificado no relatório de projeto 1. O frontend foi feito através do framework Emberjs que fornece uma solução robusta apara aplicação \textit{single page}. O código do frontend pode ser encontrado \href{https://github.com/PI2-Crema/front-ember}{aqui}.
+
+\section{Emulação}
+
+Para a emulação de dados, foi desenvolvido no móduda raspbery um função geradora de dados. Assim é possivel emular a escrida de dados pela rede \textit{wireless} na placa e observar o comportamento do sistema.
+
+\section{Teste de integração com hardware}
+
+Foi realizado um teste de inteção com o hardware e a rede \textit{wireless} e o comportamento foi o esperado. Contudo há a necessidade de realizações de mais casos de teste. Este se encontraram mais detalhados no relatório 3.
+
+\section{Próximos passos}
+
+Os próximos passos do projetos no que diz respeito ao software são:
+
+\begin{itemize}
+    \item Escrita de mais casos de teste
+    \item Validar comportamentos de error como por exemplo queda da rede sem fio
+    \item Melhorias na experiência do usuário no sistema
+    \item Verificação junto ao cliente de como se calcula a quantidade de alimento baseado na taxa de conversão alimentar
+    \item Desenvolvimento de cruzamento de dados. Por exemplo dados de crescimento versus dados de temperatura em um único gráfico.
+    \item Teste de integração com o módulo de hardware completo
+\end{itemize}
